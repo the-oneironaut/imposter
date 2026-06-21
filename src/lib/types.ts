@@ -1,6 +1,7 @@
 export interface Item {
   id: string;
   text: string;
+  category: string;
   createdAt: string;
 }
 
@@ -21,7 +22,8 @@ export interface Round {
   playerIds: string[];
   imposterIds: string[];
   actualItemId: string;
-  decoyItemId: string;
+  decoyItemId: string | null;
+  imposterWordMode: boolean;
   votes: Vote[];
   result: "crewmates" | "imposters";
   completedAt: string;
@@ -61,4 +63,5 @@ export interface GameSession {
   revealedPlayers: string[];
   votes: Vote[];
   savedRoundId: string | null;
+  imposterWordMode: boolean;
 }

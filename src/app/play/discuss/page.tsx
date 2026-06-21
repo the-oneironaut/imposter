@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useGame } from "@/context/GameContext";
 import { GameStatus } from "@/lib/types";
 import { DEFAULTS } from "@/lib/constants";
+import { getPlayers } from "@/lib/storage";
+import { pickRandom } from "@/lib/random";
 
 export default function DiscussPage() {
   const router = useRouter();
@@ -12,6 +14,14 @@ export default function DiscussPage() {
   const [seconds, setSeconds] = useState<number>(DEFAULTS.DISCUSSION_TIMER_SECONDS);
   const [timerRunning, setTimerRunning] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Pick once on mount — computed in a ref so it never re-renders.
+  const starterName = useRef<string | null>(null);
+  if (starterName.current === null && session.playerIds.length > 0) {
+    const allPlayers = getPlayers();
+    const randomId = pickRandom(session.playerIds);
+    starterName.current = allPlayers.find((p) => p.id === randomId)?.name ?? null;
+  }
 
   useEffect(() => {
     if (timerRunning && seconds > 0) {
@@ -52,6 +62,12 @@ export default function DiscussPage() {
       <div className="text-center">
         <h1 className="text-4xl font-bold mb-2">🗣️ Discussion Time</h1>
         <p className="text-gray-400 text-lg">Talk it out — who is the imposter?</p>
+        {starterName.current && (
+          <p className="mt-3 text-gray-300">
+            Start with{" "}
+            <span className="font-semibold text-indigo-400">{starterName.current}</span>
+          </p>
+        )}
       </div>
 
       <div className="text-center">

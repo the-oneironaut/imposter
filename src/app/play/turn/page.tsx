@@ -40,8 +40,16 @@ export default function TurnPage() {
   const currentPlayerId = session.playerIds[session.currentTurnIndex];
   const currentPlayer = players.find((p) => p.id === currentPlayerId);
   const isImposter = session.imposterIds.includes(currentPlayerId);
-  const wordItemId = isImposter ? session.decoyItemId : session.actualItemId;
-  const wordItem = items.find((i) => i.id === wordItemId);
+
+  // When imposterWordMode is on the imposter sees the literal word "Imposter".
+  // Otherwise they see the decoy item; crewmates always see the actual item.
+  let displayWord: string;
+  if (isImposter && session.imposterWordMode) {
+    displayWord = "Imposter";
+  } else {
+    const wordItemId = isImposter ? session.decoyItemId : session.actualItemId;
+    displayWord = items.find((i) => i.id === wordItemId)?.text ?? "...";
+  }
 
   const handleReady = () => {
     setPhase("reveal");
@@ -79,7 +87,7 @@ export default function TurnPage() {
         <p className="text-gray-400 mb-4">{currentPlayer?.name}, your word is:</p>
         <div className="bg-gray-800 rounded-2xl p-8 min-w-[280px]">
           <h1 className="text-4xl font-bold tracking-wide">
-            {wordItem?.text || "..."}
+            {displayWord}
           </h1>
         </div>
         <p className="text-gray-600 text-xs mt-4">

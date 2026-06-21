@@ -22,6 +22,7 @@ const initialSession: GameSession = {
   revealedPlayers: [],
   votes: [],
   savedRoundId: null,
+  imposterWordMode: false,
 };
 
 type GameAction =
@@ -33,7 +34,8 @@ type GameAction =
       imposterCount: number;
       imposterIds: string[];
       actualItemId: string;
-      decoyItemId: string;
+      decoyItemId: string | null;
+      imposterWordMode: boolean;
     }
   | { type: "PLAYER_READY" }
   | { type: "PLAYER_DONE" }
@@ -41,8 +43,8 @@ type GameAction =
   | { type: "START_VOTING" }
   | { type: "VOTER_READY" }
   | { type: "CAST_VOTE"; vote: Vote }
+  | { type: "CAST_VOTE_FINAL"; votes: Vote[]; roundId: string }
   | { type: "SHOW_RESULTS" }
-  | { type: "MARK_SAVED"; roundId: string }
   | { type: "PLAY_AGAIN" }
   | { type: "GO_HOME" };
 
@@ -63,6 +65,7 @@ function gameReducer(state: GameSession, action: GameAction): GameSession {
         imposterIds: action.imposterIds,
         actualItemId: action.actualItemId,
         decoyItemId: action.decoyItemId,
+        imposterWordMode: action.imposterWordMode,
         currentTurnIndex: 0,
         revealedPlayers: [],
         votes: [],
@@ -108,14 +111,6 @@ function gameReducer(state: GameSession, action: GameAction): GameSession {
     case "CAST_VOTE": {
       const newVotes = [...state.votes, action.vote];
       const nextIndex = state.currentTurnIndex + 1;
-      if (nextIndex >= state.playerIds.length) {
-        return {
-          ...state,
-          status: GameStatus.RESULTS,
-          votes: newVotes,
-          currentTurnIndex: nextIndex,
-        };
-      }
       return {
         ...state,
         status: GameStatus.VOTING_HANDOFF,
@@ -124,11 +119,17 @@ function gameReducer(state: GameSession, action: GameAction): GameSession {
       };
     }
 
+    case "CAST_VOTE_FINAL":
+      return {
+        ...state,
+        status: GameStatus.RESULTS,
+        votes: action.votes,
+        currentTurnIndex: state.playerIds.length,
+        savedRoundId: action.roundId,
+      };
+
     case "SHOW_RESULTS":
       return { ...state, status: GameStatus.RESULTS };
-
-    case "MARK_SAVED":
-      return { ...state, savedRoundId: action.roundId };
 
     case "PLAY_AGAIN":
       return { ...initialSession, status: GameStatus.SETUP };

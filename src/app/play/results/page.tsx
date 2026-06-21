@@ -5,11 +5,10 @@ import { useRouter } from "next/navigation";
 import { useGame } from "@/context/GameContext";
 import { GameStatus } from "@/lib/types";
 import type { Player, Item, Round } from "@/lib/types";
-import { getPlayers, getItems, getRounds, setRounds, getScores, setScores } from "@/lib/storage";
-import { determineOutcome, tallyVotes } from "@/lib/game-logic";
-import { computeRoundScores, mergeScores } from "@/lib/scoring";
+import { getPlayers, getItems, getRounds } from "@/lib/storage";
+import { tallyVotes } from "@/lib/game-logic";
+import { computeRoundScores } from "@/lib/scoring";
 import type { ScoreDelta } from "@/lib/scoring";
-import { nanoid } from "nanoid";
 
 export default function ResultsPage() {
   const router = useRouter();
@@ -24,47 +23,15 @@ export default function ResultsPage() {
     setItemsState(getItems());
   }, []);
 
+  // Read the already-saved round from localStorage — no saving here
   useEffect(() => {
-    if (
-      session.status === GameStatus.RESULTS &&
-      !session.savedRoundId &&
-      session.actualItemId &&
-      session.decoyItemId
-    ) {
-      const result = determineOutcome(session.votes, session.imposterIds);
-      const rounds = getRounds();
-      const round: Round = {
-        id: nanoid(),
-        roundNumber: rounds.length + 1,
-        playerIds: session.playerIds,
-        imposterIds: session.imposterIds,
-        actualItemId: session.actualItemId,
-        decoyItemId: session.decoyItemId,
-        votes: session.votes,
-        result,
-        completedAt: new Date().toISOString(),
-      };
-
-      setRounds([...rounds, round]);
-
-      const deltas = computeRoundScores(round);
-      const currentScores = getScores();
-      const newScores = mergeScores(currentScores, round, deltas);
-      setScores(newScores);
-
+    if (session.status !== GameStatus.RESULTS || !session.savedRoundId) return;
+    const round = getRounds().find((r) => r.id === session.savedRoundId);
+    if (round) {
       setSavedRound(round);
-      setScoreDeltas(deltas);
-      dispatch({ type: "MARK_SAVED", roundId: round.id });
-    } else if (session.status === GameStatus.RESULTS && session.savedRoundId) {
-      // Already saved — restore from history
-      const rounds = getRounds();
-      const existing = rounds.find((r) => r.id === session.savedRoundId);
-      if (existing) {
-        setSavedRound(existing);
-        setScoreDeltas(computeRoundScores(existing));
-      }
+      setScoreDeltas(computeRoundScores(round));
     }
-  }, [session, dispatch]);
+  }, [session.status, session.savedRoundId]);
 
   if (session.status !== GameStatus.RESULTS || !savedRound) {
     return (
@@ -112,9 +79,11 @@ export default function ResultsPage() {
             </p>
           </div>
           <div>
-            <p className="text-xs text-gray-500">Decoy Word</p>
+            <p className="text-xs text-gray-500">Imposter&apos;s Word</p>
             <p className="text-lg font-bold text-yellow-400">
-              {getItemText(savedRound.decoyItemId)}
+              {savedRound.imposterWordMode
+                ? "Imposter"
+                : getItemText(savedRound.decoyItemId ?? "")}
             </p>
           </div>
         </div>

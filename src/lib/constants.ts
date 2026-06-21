@@ -5,6 +5,8 @@ export const STORAGE_KEYS = {
   ROUNDS: "imposter:rounds",
   SCORES: "imposter:scores",
   GAME_SESSION: "imposter:gameSession",
+  DISABLED_CATEGORIES: "imposter:disabledCategories",
+  LAST_ROUND_SETTINGS: "imposter:lastRoundSettings",
 } as const;
 
 export const LIMITS = {

@@ -73,3 +73,26 @@ export function setGameSession(session: GameSession): void {
 export function clearGameSession(): void {
   remove(STORAGE_KEYS.GAME_SESSION);
 }
+
+export function getDisabledCategories(): string[] {
+  return get<string[]>(STORAGE_KEYS.DISABLED_CATEGORIES, []);
+}
+
+export function setDisabledCategories(cats: string[]): void {
+  set(STORAGE_KEYS.DISABLED_CATEGORIES, cats);
+}
+
+export interface LastRoundSettings {
+  playerIds: string[];
+  imposterCount: number;
+  disabledCategories: string[];
+  imposterWordMode: boolean;
+}
+
+export function getLastRoundSettings(): LastRoundSettings | null {
+  return get<LastRoundSettings | null>(STORAGE_KEYS.LAST_ROUND_SETTINGS, null);
+}
+
+export function setLastRoundSettings(s: LastRoundSettings): void {
+  set(STORAGE_KEYS.LAST_ROUND_SETTINGS, s);
+}

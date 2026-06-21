@@ -80,29 +80,49 @@ export default function ItemManagerPage() {
 
       {loadMsg && <p className="text-green-400 text-sm mb-3">{loadMsg}</p>}
 
-      <div className="flex-1 overflow-y-auto space-y-2">
+      <div className="flex-1 overflow-y-auto space-y-4">
         {items.length === 0 && (
           <p className="text-gray-500 text-center py-8">No items yet. Add some words above.</p>
         )}
-        {items.map((item) => {
-          const isUsed = usedItemIds.includes(item.id);
-          return (
-            <div
-              key={item.id}
-              className={`flex items-center justify-between p-3 rounded-lg ${
-                isUsed ? "bg-gray-900 text-gray-500" : "bg-gray-800"
-              }`}
-            >
-              <span className={isUsed ? "line-through" : ""}>{item.text}</span>
-              <button
-                onClick={() => removeItem(item.id)}
-                className="text-red-400 hover:text-red-300 text-sm transition-colors"
-              >
-                Remove
-              </button>
-            </div>
-          );
-        })}
+        {Array.from(new Set(items.map((i) => i.category || "Custom")))
+          .sort()
+          .map((category) => {
+            const catItems = items.filter((i) => (i.category || "Custom") === category);
+            const usedCount = catItems.filter((i) => usedItemIds.includes(i.id)).length;
+            return (
+              <div key={category}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    {category}
+                  </h3>
+                  <span className="text-xs text-gray-600">
+                    {catItems.length - usedCount}/{catItems.length} available
+                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  {catItems.map((item) => {
+                    const isUsed = usedItemIds.includes(item.id);
+                    return (
+                      <div
+                        key={item.id}
+                        className={`flex items-center justify-between p-3 rounded-lg ${
+                          isUsed ? "bg-gray-900 text-gray-500" : "bg-gray-800"
+                        }`}
+                      >
+                        <span className={isUsed ? "line-through" : ""}>{item.text}</span>
+                        <button
+                          onClick={() => removeItem(item.id)}
+                          className="text-red-400 hover:text-red-300 text-sm transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
       </div>
     </main>
   );

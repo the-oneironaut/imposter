@@ -4,8 +4,11 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useGame } from "@/context/GameContext";
 import { GameStatus } from "@/lib/types";
-import type { Player } from "@/lib/types";
-import { getPlayers } from "@/lib/storage";
+import type { Player, Round } from "@/lib/types";
+import { getPlayers, getRounds, setRounds, getScores, setScores } from "@/lib/storage";
+import { determineOutcome } from "@/lib/game-logic";
+import { computeRoundScores, mergeScores } from "@/lib/scoring";
+import { nanoid } from "nanoid";
 
 export default function VotePage() {
   const router = useRouter();
@@ -51,10 +54,33 @@ export default function VotePage() {
 
   const handleVote = () => {
     if (!selectedSuspect) return;
-    dispatch({
-      type: "CAST_VOTE",
-      vote: { voterId: currentPlayerId, suspectId: selectedSuspect },
-    });
+    const newVotes = [...session.votes, { voterId: currentPlayerId, suspectId: selectedSuspect }];
+    const nextIndex = session.currentTurnIndex + 1;
+    const isLastVote = nextIndex >= session.playerIds.length;
+
+    if (isLastVote && session.actualItemId) {
+      // Save round synchronously here — event handlers are not double-called in Strict Mode
+      const result = determineOutcome(newVotes, session.imposterIds);
+      const rounds = getRounds();
+      const round: Round = {
+        id: nanoid(),
+        roundNumber: rounds.length + 1,
+        playerIds: session.playerIds,
+        imposterIds: session.imposterIds,
+        actualItemId: session.actualItemId,
+        decoyItemId: session.decoyItemId,
+        imposterWordMode: session.imposterWordMode,
+        votes: newVotes,
+        result,
+        completedAt: new Date().toISOString(),
+      };
+      setRounds([...rounds, round]);
+      const deltas = computeRoundScores(round);
+      setScores(mergeScores(getScores(), round, deltas));
+      dispatch({ type: "CAST_VOTE_FINAL", votes: newVotes, roundId: round.id });
+    } else {
+      dispatch({ type: "CAST_VOTE", vote: { voterId: currentPlayerId, suspectId: selectedSuspect } });
+    }
     setPhase("handoff");
     setSelectedSuspect(null);
   };
