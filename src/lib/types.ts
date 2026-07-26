@@ -24,6 +24,7 @@ export interface Round {
   actualItemId: string;
   decoyItemId: string | null;
   imposterWordMode: boolean;
+  decoySameCategory: boolean;
   votes: Vote[];
   result: "crewmates" | "imposters";
   completedAt: string;
@@ -64,4 +65,5 @@ export interface GameSession {
   votes: Vote[];
   savedRoundId: string | null;
   imposterWordMode: boolean;
+  decoySameCategory: boolean;
 }

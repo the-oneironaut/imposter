@@ -21,6 +21,7 @@ export default function SetupPage() {
   const [error, setError] = useState("");
   const [disabledCategories, setDisabledCategoriesState] = useState<string[]>([]);
   const [imposterWordMode, setImposterWordMode] = useState(false);
+  const [decoySameCategory, setDecoySameCategory] = useState(true);
   const [hasLastSettings, setHasLastSettings] = useState(false);
 
   // All unique categories derived from the loaded items
@@ -100,11 +101,17 @@ export default function SetupPage() {
       const actualItem = selectItem(poolItems, currentUsedIds);
       const decoyItemId = imposterWordMode
         ? null
-        : selectDecoyItem(items, actualItem.id).id;
+        : selectDecoyItem(items, actualItem.id, decoySameCategory).id;
       const imposterIds = assignImposters(playerIds, imposterCount);
 
       // Persist settings so "Last Round" can restore them next time
-      setLastRoundSettings({ playerIds, imposterCount, disabledCategories, imposterWordMode });
+      setLastRoundSettings({
+        playerIds,
+        imposterCount,
+        disabledCategories,
+        imposterWordMode,
+        decoySameCategory,
+      });
 
       // Mark item as used
       setUsedItemIds([...currentUsedIds, actualItem.id]);
@@ -117,6 +124,7 @@ export default function SetupPage() {
         actualItemId: actualItem.id,
         decoyItemId,
         imposterWordMode,
+        decoySameCategory,
       });
 
       router.push("/play/turn");
@@ -133,6 +141,7 @@ export default function SetupPage() {
     setSelectedIds(new Set(validIds));
     setImposterCount(last.imposterCount);
     setImposterWordMode(last.imposterWordMode);
+    setDecoySameCategory(last.decoySameCategory);
     setDisabledCategoriesState(last.disabledCategories);
     setDisabledCategories(last.disabledCategories);
   };
@@ -244,7 +253,7 @@ export default function SetupPage() {
       </div>
 
       <div className="mb-6">
-        <p className="text-sm font-medium text-gray-400 mb-2">Imposter Mode</p>
+        <p className="text-sm font-medium text-gray-400 mb-2">Imposter Word</p>
         <button
           type="button"
           onClick={() => setImposterWordMode((v) => !v)}
@@ -277,6 +286,43 @@ export default function SetupPage() {
           </div>
         </button>
       </div>
+
+      {!imposterWordMode && (
+        <div className="mb-6">
+          <p className="text-sm font-medium text-gray-400 mb-2">Decoy Word Category</p>
+          <button
+            type="button"
+            onClick={() => setDecoySameCategory((v) => !v)}
+            className={`flex items-center gap-3 p-3 rounded-lg border w-full transition-colors ${
+              decoySameCategory
+                ? "bg-indigo-900/30 border-indigo-700"
+                : "bg-gray-800 border-gray-700"
+            }`}
+          >
+            <div
+              className={`w-10 h-6 rounded-full relative flex-shrink-0 transition-colors ${
+                decoySameCategory ? "bg-indigo-600" : "bg-gray-600"
+              }`}
+            >
+              <div
+                className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                  decoySameCategory ? "translate-x-5" : "translate-x-1"
+                }`}
+              />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-medium">
+                {decoySameCategory ? "Same category" : "Any category"}
+              </p>
+              <p className="text-xs text-gray-500">
+                {decoySameCategory
+                  ? "Pick another word from the real word's category"
+                  : "Pick any other word from all categories"}
+              </p>
+            </div>
+          </button>
+        </div>
+      )}
 
       {availableCount <= 0 && (
         <p className="text-yellow-400 text-sm mb-3">

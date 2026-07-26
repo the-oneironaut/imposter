@@ -70,6 +70,7 @@ export default function VotePage() {
         actualItemId: session.actualItemId,
         decoyItemId: session.decoyItemId,
         imposterWordMode: session.imposterWordMode,
+        decoySameCategory: session.decoySameCategory,
         votes: newVotes,
         result,
         completedAt: new Date().toISOString(),

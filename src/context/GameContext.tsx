@@ -23,6 +23,7 @@ const initialSession: GameSession = {
   votes: [],
   savedRoundId: null,
   imposterWordMode: false,
+  decoySameCategory: true,
 };
 
 type GameAction =
@@ -36,6 +37,7 @@ type GameAction =
       actualItemId: string;
       decoyItemId: string | null;
       imposterWordMode: boolean;
+      decoySameCategory: boolean;
     }
   | { type: "PLAYER_READY" }
   | { type: "PLAYER_DONE" }
@@ -66,6 +68,7 @@ function gameReducer(state: GameSession, action: GameAction): GameSession {
         actualItemId: action.actualItemId,
         decoyItemId: action.decoyItemId,
         imposterWordMode: action.imposterWordMode,
+        decoySameCategory: action.decoySameCategory,
         currentTurnIndex: 0,
         revealedPlayers: [],
         votes: [],

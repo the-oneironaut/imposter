@@ -9,11 +9,26 @@ export function selectItem(allItems: Item[], usedItemIds: string[]): Item {
   return pickRandom(available);
 }
 
-export function selectDecoyItem(allItems: Item[], actualItemId: string): Item {
-  const candidates = allItems.filter((item) => item.id !== actualItemId);
+export function selectDecoyItem(
+  allItems: Item[],
+  actualItemId: string,
+  sameCategory = false
+): Item {
+  const actualItem = allItems.find((item) => item.id === actualItemId);
+  if (!actualItem) {
+    throw new Error("Actual item not found for decoy selection.");
+  }
+
+  const candidates = allItems.filter((item) => {
+    if (item.id === actualItemId) return false;
+    if (!sameCategory) return true;
+    return item.category === actualItem.category;
+  });
+
   if (candidates.length === 0) {
     throw new Error("Not enough items to select a decoy.");
   }
+
   return pickRandom(candidates);
 }
 

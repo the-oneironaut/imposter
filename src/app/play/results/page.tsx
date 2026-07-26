@@ -86,6 +86,11 @@ export default function ResultsPage() {
                 : getItemText(savedRound.decoyItemId ?? "")}
             </p>
           </div>
+          {!savedRound.imposterWordMode && (
+            <div className="mt-2 text-xs text-gray-500">
+              Decoy rule: {savedRound.decoySameCategory ? "Same category" : "Any category"}
+            </div>
+          )}
         </div>
       </div>
 

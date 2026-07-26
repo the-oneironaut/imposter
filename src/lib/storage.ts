@@ -87,6 +87,7 @@ export interface LastRoundSettings {
   imposterCount: number;
   disabledCategories: string[];
   imposterWordMode: boolean;
+  decoySameCategory: boolean;
 }
 
 export function getLastRoundSettings(): LastRoundSettings | null {
