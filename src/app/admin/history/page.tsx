@@ -90,7 +90,12 @@ export default function HistoryPage() {
                   <p>
                     Word: <span className="text-white">{getItemText(round.actualItemId)}</span>
                     {" · "}
-                    Decoy: <span className="text-yellow-400">{getItemText(round.decoyItemId)}</span>
+                    Decoy:{" "}
+                    <span className="text-yellow-400">
+                      {round.imposterWordMode
+                        ? "Imposter"
+                        : getItemText(round.decoyItemId ?? "")}
+                    </span>
                   </p>
                   <p>
                     Imposter{round.imposterIds.length > 1 ? "s" : ""}:{" "}
