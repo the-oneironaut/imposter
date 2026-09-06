@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useGame } from "@/context/GameContext";
 import { GameStatus } from "@/lib/types";
 import { getPlayers, getItems } from "@/lib/storage";
+import { DRAWING_ITEMS } from "@/lib/drawing-items";
 import type { Player, Item } from "@/lib/types";
 
 export default function TurnPage() {
@@ -22,6 +23,12 @@ export default function TurnPage() {
   useEffect(() => {
     if (session.status === GameStatus.DISCUSSION) {
       router.push("/play/discuss");
+    } else if (
+      session.status === GameStatus.DRAWING_HANDOFF ||
+      session.status === GameStatus.DRAWING_TURN ||
+      session.status === GameStatus.DRAWING_ROUND_END
+    ) {
+      router.push("/play/draw");
     }
   }, [session.status, router]);
 
@@ -48,7 +55,10 @@ export default function TurnPage() {
     displayWord = "Imposter";
   } else {
     const wordItemId = isImposter ? session.decoyItemId : session.actualItemId;
-    displayWord = items.find((i) => i.id === wordItemId)?.text ?? "...";
+    displayWord =
+      items.find((i) => i.id === wordItemId)?.text ??
+      DRAWING_ITEMS.find((i) => i.id === wordItemId)?.text ??
+      "...";
   }
 
   const handleReady = () => {

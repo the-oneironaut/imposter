@@ -74,6 +74,14 @@ export default function VotePage() {
         votes: newVotes,
         result,
         completedAt: new Date().toISOString(),
+        gameMode: session.gameMode,
+        ...(session.gameMode === "drawing"
+          ? {
+              drawingMedium: session.drawingMedium,
+              drawingStrokes: session.drawingStrokes,
+              drawingRounds: session.drawingRound,
+            }
+          : {}),
       };
       setRounds([...rounds, round]);
       const deltas = computeRoundScores(round);

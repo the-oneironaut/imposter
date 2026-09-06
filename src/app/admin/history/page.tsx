@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Player, Item } from "@/lib/types";
 import { getPlayers, getItems } from "@/lib/storage";
+import { DRAWING_ITEMS } from "@/lib/drawing-items";
 import { useScores } from "@/hooks/useScores";
+import DrawingCanvas from "@/components/DrawingCanvas";
 
 export default function HistoryPage() {
   const { scores, rounds } = useScores();
@@ -19,7 +21,9 @@ export default function HistoryPage() {
   const getPlayerName = (id: string) =>
     players.find((p) => p.id === id)?.name || "Unknown";
   const getItemText = (id: string) =>
-    items.find((i) => i.id === id)?.text || "Unknown";
+    items.find((i) => i.id === id)?.text ||
+    DRAWING_ITEMS.find((i) => i.id === id)?.text ||
+    "Unknown";
 
   const sortedScores = Object.values(scores).sort(
     (a, b) => b.wins - a.wins || (b.correctVotes - a.correctVotes)
@@ -87,6 +91,13 @@ export default function HistoryPage() {
                   </span>
                 </div>
                 <div className="text-sm text-gray-400 space-y-1">
+                  {round.gameMode === "drawing" && (
+                    <p>
+                      Mode: <span className="text-emerald-300">Board drawing</span>
+                      {" · "}
+                      Surface: <span className="text-white">{round.drawingMedium === "physical" ? "Paper or board" : "Browser"}</span>
+                    </p>
+                  )}
                   <p>
                     Word: <span className="text-white">{getItemText(round.actualItemId)}</span>
                     {" · "}
@@ -106,6 +117,18 @@ export default function HistoryPage() {
                   <p>
                     Players: {round.playerIds.map(getPlayerName).join(", ")}
                   </p>
+                  {round.gameMode === "drawing" && round.drawingMedium === "browser" && (
+                    <div className="pt-3">
+                      <DrawingCanvas
+                        strokes={round.drawingStrokes ?? []}
+                        disabled
+                        ariaLabel={`Saved drawing from round ${round.roundNumber}`}
+                      />
+                      <p className="text-xs text-gray-500 mt-2">
+                        {round.drawingRounds ?? 1} drawing round{(round.drawingRounds ?? 1) !== 1 ? "s" : ""}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

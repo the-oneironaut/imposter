@@ -6,9 +6,11 @@ import { useGame } from "@/context/GameContext";
 import { GameStatus } from "@/lib/types";
 import type { Player, Item, Round } from "@/lib/types";
 import { getPlayers, getItems, getRounds } from "@/lib/storage";
+import { DRAWING_ITEMS } from "@/lib/drawing-items";
 import { tallyVotes } from "@/lib/game-logic";
 import { computeRoundScores } from "@/lib/scoring";
 import type { ScoreDelta } from "@/lib/scoring";
+import DrawingCanvas from "@/components/DrawingCanvas";
 
 export default function ResultsPage() {
   const router = useRouter();
@@ -45,7 +47,9 @@ export default function ResultsPage() {
   const getPlayerName = (id: string) =>
     players.find((p) => p.id === id)?.name || "Unknown";
   const getItemText = (id: string) =>
-    items.find((i) => i.id === id)?.text || "Unknown";
+    items.find((i) => i.id === id)?.text ||
+    DRAWING_ITEMS.find((i) => i.id === id)?.text ||
+    "Unknown";
 
   const tally = tallyVotes(savedRound.votes);
   const crewmatesWon = savedRound.result === "crewmates";
@@ -93,6 +97,26 @@ export default function ResultsPage() {
           )}
         </div>
       </div>
+
+      {savedRound.gameMode === "drawing" && (
+        <div className="bg-gray-800 rounded-lg p-4">
+          <h2 className="text-sm font-medium text-gray-400 mb-3">Final Drawing</h2>
+          {savedRound.drawingMedium === "browser" ? (
+            <DrawingCanvas
+              strokes={savedRound.drawingStrokes ?? []}
+              disabled
+              ariaLabel="Saved final drawing"
+            />
+          ) : (
+            <p className="text-sm text-emerald-200">
+              This round used a physical board or sheet of paper.
+            </p>
+          )}
+          <p className="text-xs text-gray-500 mt-2">
+            {savedRound.drawingRounds ?? 1} drawing round{(savedRound.drawingRounds ?? 1) !== 1 ? "s" : ""}
+          </p>
+        </div>
+      )}
 
       <div className="bg-gray-800 rounded-lg p-4">
         <h2 className="text-sm font-medium text-gray-400 mb-3">Vote Breakdown</h2>

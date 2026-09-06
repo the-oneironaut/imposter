@@ -12,21 +12,44 @@ export function selectItem(allItems: Item[], usedItemIds: string[]): Item {
 export function selectDecoyItem(
   allItems: Item[],
   actualItemId: string,
-  sameCategory = false
+  sameCategory = false,
+  excludedItemIds: string[] = []
 ): Item {
   const actualItem = allItems.find((item) => item.id === actualItemId);
   if (!actualItem) {
     throw new Error("Actual item not found for decoy selection.");
   }
 
+  const excludedIds = new Set([actualItemId, ...excludedItemIds]);
   const candidates = allItems.filter((item) => {
-    if (item.id === actualItemId) return false;
+    if (excludedIds.has(item.id)) return false;
     if (!sameCategory) return true;
     return item.category === actualItem.category;
   });
 
   if (candidates.length === 0) {
     throw new Error("Not enough items to select a decoy.");
+  }
+
+  return pickRandom(candidates);
+}
+
+export function selectDifferentCategoryItem(
+  allItems: Item[],
+  actualItemId: string,
+  excludedItemIds: string[] = []
+): Item {
+  const actualItem = allItems.find((item) => item.id === actualItemId);
+  if (!actualItem) {
+    throw new Error("Actual item not found for decoy selection.");
+  }
+
+  const excludedIds = new Set([actualItemId, ...excludedItemIds]);
+  const candidates = allItems.filter(
+    (item) => !excludedIds.has(item.id) && item.category !== actualItem.category
+  );
+  if (candidates.length === 0) {
+    throw new Error("Not enough categories to select an unrelated prompt.");
   }
 
   return pickRandom(candidates);

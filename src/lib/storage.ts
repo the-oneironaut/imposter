@@ -1,5 +1,5 @@
 import { STORAGE_KEYS } from "./constants";
-import type { Item, Player, Round, PlayerScore, GameSession } from "./types";
+import type { DrawingMedium, GameMode, Item, Player, Round, PlayerScore, GameSession } from "./types";
 
 function get<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -88,6 +88,8 @@ export interface LastRoundSettings {
   disabledCategories: string[];
   imposterWordMode: boolean;
   decoySameCategory: boolean;
+  gameMode?: GameMode;
+  drawingMedium?: DrawingMedium;
 }
 
 export function getLastRoundSettings(): LastRoundSettings | null {

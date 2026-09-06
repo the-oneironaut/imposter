@@ -7,6 +7,7 @@ import { GameStatus } from "@/lib/types";
 import { DEFAULTS } from "@/lib/constants";
 import { getPlayers } from "@/lib/storage";
 import { pickRandom } from "@/lib/random";
+import DrawingCanvas from "@/components/DrawingCanvas";
 
 export default function DiscussPage() {
   const router = useRouter();
@@ -24,6 +25,13 @@ export default function DiscussPage() {
   }
 
   useEffect(() => {
+    if (session.status === GameStatus.DISCUSSION && session.gameMode === "drawing") {
+      dispatch({ type: "START_VOTING" });
+      router.push("/play/vote");
+    }
+  }, [dispatch, router, session.gameMode, session.status]);
+
+  useEffect(() => {
     if (timerRunning && seconds > 0) {
       intervalRef.current = setInterval(() => {
         setSeconds((s) => {
@@ -39,6 +47,14 @@ export default function DiscussPage() {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [timerRunning]);
+
+  if (session.status === GameStatus.DISCUSSION && session.gameMode === "drawing") {
+    return (
+      <main className="flex-1 flex flex-col items-center justify-center p-6 gap-4">
+        <p className="text-gray-400">Moving to voting</p>
+      </main>
+    );
+  }
 
   if (session.status !== GameStatus.DISCUSSION) {
     return (
@@ -60,8 +76,13 @@ export default function DiscussPage() {
   return (
     <main className="flex-1 flex flex-col items-center justify-center p-6 gap-8">
       <div className="text-center">
-        <h1 className="text-4xl font-bold mb-2">🗣️ Discussion Time</h1>
-        <p className="text-gray-400 text-lg">Talk it out — who is the imposter?</p>
+        <h1 className="text-4xl font-bold mb-2">Discussion Time</h1>
+        <p className="text-gray-400 text-lg">
+          {session.gameMode === "drawing"
+            ? "Study the board, then talk it out — who is the imposter?"
+            : "Talk it out — who is the imposter?"
+          }
+        </p>
         {starterName.current && (
           <p className="mt-3 text-gray-300">
             Start with{" "}
@@ -69,6 +90,26 @@ export default function DiscussPage() {
           </p>
         )}
       </div>
+
+      {session.gameMode === "drawing" && (
+        <section className="w-full max-w-2xl">
+          <h2 className="text-sm font-medium text-gray-400 mb-2">Final drawing</h2>
+          {session.drawingMedium === "browser" ? (
+            <DrawingCanvas
+              strokes={session.drawingStrokes}
+              disabled
+              ariaLabel="Final shared drawing for discussion"
+            />
+          ) : (
+            <div className="rounded-xl border border-emerald-900/70 bg-emerald-950/30 p-5 text-center text-emerald-100">
+              Keep the physical drawing visible while everyone discusses.
+            </div>
+          )}
+          <p className="text-gray-500 text-xs mt-2 text-center">
+            {session.drawingRound} drawing round{session.drawingRound !== 1 ? "s" : ""} completed
+          </p>
+        </section>
+      )}
 
       <div className="text-center">
         <div className="text-6xl font-mono font-bold tabular-nums">

@@ -79,11 +79,24 @@ Round {
   votes: Vote[]                // one per player
   result: "crewmates" | "imposters"  // who won
   completedAt: string          // ISO 8601
+  gameMode?: "verbal" | "drawing"
+  drawingMedium?: "browser" | "physical"
+  drawingStrokes?: DrawingStroke[]
+  drawingRounds?: number
 }
 
 Vote {
   voterId: string              // player ID who cast the vote
   suspectId: string            // player ID they voted for
+}
+
+DrawingStroke {
+  id: string
+  playerId: string
+  roundNumber: number
+  points: { x: number; y: number }[]  // normalized 0..1 canvas coordinates
+  color: string
+  width: number
 }
 ```
 
@@ -127,6 +140,7 @@ Schema: GameSession | null
 GameSession {
   status: GameStatus           // see state machine §6
   playerIds: string[]          // players in this round
+  drawingPlayerIds: string[]   // independent order for drawing turns
   imposterCount: number        // configured number of imposters
   imposterIds: string[]        // assigned imposters (set after setup)
   actualItemId: string | null  // the real word
@@ -134,6 +148,10 @@ GameSession {
   currentTurnIndex: number     // index into playerIds, tracks who is viewing
   revealedPlayers: string[]    // player IDs who have already seen their word
   votes: Vote[]                // accumulated votes
+  gameMode: "verbal" | "drawing"
+  drawingMedium: "browser" | "physical"
+  drawingStrokes: DrawingStroke[]
+  drawingRound: number
 }
 ```
 
@@ -162,9 +180,10 @@ Player ──< PlayerScore (1:1 by playerId)
 | 3 | `/admin/history` | Game History | View past rounds, scores, leaderboard. |
 | 4 | `/play/setup` | Round Setup | Add/select players, configure imposter count. |
 | 5 | `/play/turn` | Turn Screen | Pass-and-play: shows current player name, tap to reveal word, confirm done. |
-| 6 | `/play/discuss` | Discussion | Timer-optional screen. "Discussion phase — talk it out!" |
-| 7 | `/play/vote` | Voting | Each player takes the device and votes for who they think is the imposter. |
-| 8 | `/play/results` | Results | Reveal imposter(s), vote tally, who won, score changes. |
+| 6 | `/play/draw` | Drawing Board | Each player adds one stroke to the shared browser canvas or marks a shared physical board. |
+| 7 | `/play/discuss` | Discussion | Timer-optional screen. Players inspect the drawing when drawing mode is active. |
+| 8 | `/play/vote` | Voting | Each player takes the device and votes for who they think is the imposter. |
+| 9 | `/play/results` | Results | Reveal imposter(s), prompts, vote tally, who won, score changes, and drawing snapshot. |
 
 ### 3.2 Screen Flow
 
@@ -173,12 +192,13 @@ HOME
  ├─> ITEM MANAGER ─> HOME
  ├─> GAME HISTORY ─> HOME
  └─> ROUND SETUP
-      └─> TURN SCREEN (loops per player)
-           └─> DISCUSSION
-                └─> VOTING (loops per player)
-                     └─> RESULTS
-                          ├─> ROUND SETUP (play again)
-                          └─> HOME
+       └─> TURN SCREEN (loops per player)
+         ├─> DISCUSSION (verbal mode)
+         └─> DRAWING BOARD (drawing mode, one or more rounds)
+           └─> VOTING (loops per player)
+             └─> RESULTS
+               ├─> ROUND SETUP (play again)
+               └─> HOME
 ```
 
 ### 3.3 Screen Details
@@ -208,7 +228,15 @@ HOME
 - **Phase A — Hand-off**: Shows "Pass the device to: **{PlayerName}**" with large text. "I'm ready" button.
 - **Phase B — Reveal**: On tap/click, shows the word. Real players see the actual word. Imposters see the decoy. No visual distinction — both see "Your word is: **{word}**". "Got it" button.
 - **Phase C — Concealed**: Returns to Phase A for the next player, or transitions to Discussion after last player.
-- Player order is the order from setup (no shuffling needed — the imposter assignment is random, not the order).
+- The private reveal/voting order and drawing order are shuffled independently when the round starts. Each order is persisted for refreshes and repeat drawing rounds.
+
+**Drawing Board (`/play/draw`)**
+- The assignment screen remains private and runs first so every player sees their drawable prompt before drawing begins.
+- Browser mode keeps one responsive shared canvas. Each player can add exactly one continuous stroke per drawing round; color and pen size are selectable, with no undo or erase.
+- Physical mode shows the same handoff controls and instructs players to use one shared sheet of paper or whiteboard.
+- After each complete round, the group can add another stroke from every player or finish and vote. Browser strokes are persisted in the active session and saved in the completed round history.
+
+Drawable prompts come from a separate built-in bank. Once a round starts, both the actual and decoy prompt IDs are added to `usedItemIds`, so neither can be selected again until the used list is reset.
 
 **Discussion (`/play/discuss`)**
 - Large text: "Discuss! Who is the imposter?"
@@ -321,6 +349,9 @@ DISCUSSION        — all players have seen words, discussion in progress
 VOTING_HANDOFF    — waiting for next voter to take the device
 VOTING_CAST       — voter is choosing a suspect
 RESULTS           — round complete, results displayed
+DRAWING_HANDOFF   — waiting for the next drawing player
+DRAWING_TURN      — current player adds one mark
+DRAWING_ROUND_END — group chooses another drawing round or voting
 ```
 
 ### 6.2 Transitions
@@ -340,7 +371,19 @@ TURNS_HANDOFF
 
 TURNS_REVEAL
   ──[player taps "Got it", more players remain]──> TURNS_HANDOFF
-  ──[player taps "Got it", all players done]──> DISCUSSION
+  ──[player taps "Got it", all players done, verbal mode]──> DISCUSSION
+  ──[player taps "Got it", all players done, drawing mode]──> DRAWING_HANDOFF
+
+DRAWING_HANDOFF
+  ──[player taps "I'm ready"]──> DRAWING_TURN
+
+DRAWING_TURN
+  ──[player completes their mark, more players remain]──> DRAWING_HANDOFF
+  ──[last player completes their mark]──> DRAWING_ROUND_END
+
+DRAWING_ROUND_END
+  ──[group chooses another round]──> DRAWING_HANDOFF
+  ──[group chooses voting]──> VOTING_HANDOFF
 
 DISCUSSION
   ──[user taps "Start Voting"]──> VOTING_HANDOFF

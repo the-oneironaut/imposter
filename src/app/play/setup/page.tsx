@@ -6,8 +6,11 @@ import { usePlayers } from "@/hooks/usePlayers";
 import { useItems } from "@/hooks/useItems";
 import { useGame } from "@/context/GameContext";
 import { LIMITS } from "@/lib/constants";
-import { assignImposters, selectItem, selectDecoyItem } from "@/lib/game-logic";
-import { getItems, getUsedItemIds, setUsedItemIds, getPlayers, getDisabledCategories, setDisabledCategories, getLastRoundSettings, setLastRoundSettings } from "@/lib/storage";
+import { assignImposters, selectItem, selectDecoyItem, selectDifferentCategoryItem } from "@/lib/game-logic";
+import { DRAWING_ITEMS } from "@/lib/drawing-items";
+import { getUsedItemIds, setUsedItemIds, getPlayers, getDisabledCategories, setDisabledCategories, getLastRoundSettings, setLastRoundSettings } from "@/lib/storage";
+import { shuffleArray } from "@/lib/random";
+import type { DrawingMedium, GameMode } from "@/lib/types";
 
 export default function SetupPage() {
   const router = useRouter();
@@ -22,10 +25,12 @@ export default function SetupPage() {
   const [disabledCategories, setDisabledCategoriesState] = useState<string[]>([]);
   const [imposterWordMode, setImposterWordMode] = useState(false);
   const [decoySameCategory, setDecoySameCategory] = useState(true);
+  const [gameMode, setGameMode] = useState<GameMode>("verbal");
+  const [drawingMedium, setDrawingMedium] = useState<DrawingMedium>("browser");
   const [hasLastSettings, setHasLastSettings] = useState(false);
 
-  // All unique categories derived from the loaded items
-  const allCategories = Array.from(new Set(items.map((i) => i.category || "Custom"))).sort();
+  const promptItems = gameMode === "drawing" ? DRAWING_ITEMS : items;
+  const allCategories = Array.from(new Set(promptItems.map((i) => i.category || "Custom"))).sort();
 
   useEffect(() => {
     setDisabledCategoriesState(getDisabledCategories());
@@ -41,7 +46,7 @@ export default function SetupPage() {
   };
 
   // Items eligible for this round (enabled category + not used)
-  const poolItems = items.filter((i) => !disabledCategories.includes(i.category || "Custom"));
+  const poolItems = promptItems.filter((i) => !disabledCategories.includes(i.category || "Custom"));
   const poolAvailable = poolItems.filter((i) => !usedItemIds.includes(i.id));
 
   const maxImposters = Math.max(1, Math.floor((selectedIds.size - 1) / 2));
@@ -96,12 +101,19 @@ export default function SetupPage() {
   const handleStart = () => {
     try {
       const currentUsedIds = getUsedItemIds();
-      const playerIds = Array.from(selectedIds);
+      const playerIds = shuffleArray(Array.from(selectedIds));
+      const drawingPlayerIds = shuffleArray(playerIds);
 
       const actualItem = selectItem(poolItems, currentUsedIds);
-      const decoyItemId = imposterWordMode
-        ? null
-        : selectDecoyItem(items, actualItem.id, decoySameCategory).id;
+      const decoyItemId =
+        gameMode === "drawing"
+          ? (decoySameCategory
+            ? selectDecoyItem(poolItems, actualItem.id, true, currentUsedIds)
+            : selectDifferentCategoryItem(poolItems, actualItem.id, currentUsedIds)
+          ).id
+          : imposterWordMode
+            ? null
+            : selectDecoyItem(items, actualItem.id, decoySameCategory, currentUsedIds).id;
       const imposterIds = assignImposters(playerIds, imposterCount);
 
       // Persist settings so "Last Round" can restore them next time
@@ -109,22 +121,33 @@ export default function SetupPage() {
         playerIds,
         imposterCount,
         disabledCategories,
-        imposterWordMode,
+        imposterWordMode: gameMode === "drawing" ? false : imposterWordMode,
         decoySameCategory,
+        gameMode,
+        drawingMedium,
       });
 
       // Mark item as used
-      setUsedItemIds([...currentUsedIds, actualItem.id]);
+      setUsedItemIds([
+        ...new Set([
+          ...currentUsedIds,
+          actualItem.id,
+          ...(decoyItemId ? [decoyItemId] : []),
+        ]),
+      ]);
 
       dispatch({
         type: "START_ROUND",
         playerIds,
+        drawingPlayerIds,
         imposterCount,
         imposterIds,
         actualItemId: actualItem.id,
         decoyItemId,
-        imposterWordMode,
+        imposterWordMode: gameMode === "drawing" ? false : imposterWordMode,
         decoySameCategory,
+        gameMode,
+        drawingMedium,
       });
 
       router.push("/play/turn");
@@ -140,8 +163,10 @@ export default function SetupPage() {
     const validIds = last.playerIds.filter((id) => currentPlayers.some((p) => p.id === id));
     setSelectedIds(new Set(validIds));
     setImposterCount(last.imposterCount);
-    setImposterWordMode(last.imposterWordMode);
+    setImposterWordMode(last.gameMode === "drawing" ? false : last.imposterWordMode);
     setDecoySameCategory(last.decoySameCategory);
+    setGameMode(last.gameMode ?? "verbal");
+    setDrawingMedium(last.drawingMedium ?? "browser");
     setDisabledCategoriesState(last.disabledCategories);
     setDisabledCategories(last.disabledCategories);
   };
@@ -184,6 +209,36 @@ export default function SetupPage() {
       </form>
 
       {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
+
+      <div className="mb-6">
+        <p className="text-sm font-medium text-gray-400 mb-2">Game Mode</p>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setGameMode("verbal")}
+            className={`p-3 rounded-lg border text-left transition-colors ${
+              gameMode === "verbal"
+                ? "bg-indigo-900/40 border-indigo-600"
+                : "bg-gray-800 border-gray-700 hover:border-gray-600"
+            }`}
+          >
+            <span className="block font-medium">Verbal discussion</span>
+            <span className="block text-xs text-gray-500 mt-1">Talk, then vote</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setGameMode("drawing")}
+            className={`p-3 rounded-lg border text-left transition-colors ${
+              gameMode === "drawing"
+                ? "bg-emerald-900/40 border-emerald-600"
+                : "bg-gray-800 border-gray-700 hover:border-gray-600"
+            }`}
+          >
+            <span className="block font-medium">Draw together</span>
+            <span className="block text-xs text-gray-500 mt-1">Build one shared clue</span>
+          </button>
+        </div>
+      </div>
 
       <h2 className="text-sm font-medium text-gray-400 mb-2">
         Select players ({selectedIds.size} selected)
@@ -252,8 +307,9 @@ export default function SetupPage() {
         </div>
       </div>
 
-      <div className="mb-6">
-        <p className="text-sm font-medium text-gray-400 mb-2">Imposter Word</p>
+      {gameMode === "verbal" ? (
+        <div className="mb-6">
+          <p className="text-sm font-medium text-gray-400 mb-2">Imposter Word</p>
         <button
           type="button"
           onClick={() => setImposterWordMode((v) => !v)}
@@ -285,9 +341,79 @@ export default function SetupPage() {
             </p>
           </div>
         </button>
-      </div>
+        </div>
+      ) : (
+        <div className="mb-6 space-y-4">
+          <div>
+            <p className="text-sm font-medium text-gray-400 mb-2">Drawing surface</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setDrawingMedium("browser")}
+                className={`p-3 rounded-lg border text-left transition-colors ${
+                  drawingMedium === "browser"
+                    ? "bg-emerald-900/40 border-emerald-600"
+                    : "bg-gray-800 border-gray-700 hover:border-gray-600"
+                }`}
+              >
+                <span className="block font-medium">Browser board</span>
+                <span className="block text-xs text-gray-500 mt-1">Draw on this device</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDrawingMedium("physical")}
+                className={`p-3 rounded-lg border text-left transition-colors ${
+                  drawingMedium === "physical"
+                    ? "bg-emerald-900/40 border-emerald-600"
+                    : "bg-gray-800 border-gray-700 hover:border-gray-600"
+                }`}
+              >
+                <span className="block font-medium">Paper or board</span>
+                <span className="block text-xs text-gray-500 mt-1">Use a physical surface</span>
+              </button>
+            </div>
+          </div>
 
-      {!imposterWordMode && (
+          <div className="rounded-lg border border-emerald-900/70 bg-emerald-950/30 p-3 text-sm text-emerald-100">
+            {drawingMedium === "browser"
+              ? "Everyone uses one shared board on this device. Pass it after each person adds one mark."
+              : "Use one shared whiteboard or sheet of paper. The app shows each private word and tracks whose turn it is; pass the device only for the turn controls."
+            }
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-400 mb-2">Imposter prompt relationship</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setDecoySameCategory(true)}
+                className={`p-3 rounded-lg border text-left transition-colors ${
+                  decoySameCategory
+                    ? "bg-amber-900/40 border-amber-600"
+                    : "bg-gray-800 border-gray-700 hover:border-gray-600"
+                }`}
+              >
+                <span className="block font-medium">Related</span>
+                <span className="block text-xs text-gray-500 mt-1">Same category</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDecoySameCategory(false)}
+                className={`p-3 rounded-lg border text-left transition-colors ${
+                  !decoySameCategory
+                    ? "bg-amber-900/40 border-amber-600"
+                    : "bg-gray-800 border-gray-700 hover:border-gray-600"
+                }`}
+              >
+                <span className="block font-medium">Unrelated</span>
+                <span className="block text-xs text-gray-500 mt-1">Any other category</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {gameMode === "verbal" && !imposterWordMode && (
         <div className="mb-6">
           <p className="text-sm font-medium text-gray-400 mb-2">Decoy Word Category</p>
           <button
@@ -324,9 +450,12 @@ export default function SetupPage() {
         </div>
       )}
 
-      {availableCount <= 0 && (
+      {(gameMode === "verbal" ? availableCount : poolAvailable.length) <= 0 && (
         <p className="text-yellow-400 text-sm mb-3">
-          No items available! Go to Manage Items to add more or reset used items.
+          {gameMode === "drawing"
+            ? "All drawable prompts have been used. Reset used items to continue."
+            : "No items available! Go to Manage Items to add more or reset used items."
+          }
         </p>
       )}
 
@@ -338,15 +467,15 @@ export default function SetupPage() {
 
       <div className="mb-6">
         <p className="text-sm font-medium text-gray-400 mb-2">
-          Word Categories
+          {gameMode === "drawing" ? "Drawing Categories" : "Word Categories"}
           <span className="text-gray-600 ml-2">
-            ({poolAvailable.length} available from {poolItems.length} items)
+            ({poolAvailable.length} available from {poolItems.length} {gameMode === "drawing" ? "prompts" : "items"})
           </span>
         </p>
         <div className="flex flex-wrap gap-2">
           {allCategories.map((cat) => {
             const enabled = !disabledCategories.includes(cat);
-            const catItems = items.filter((i) => (i.category || "Custom") === cat);
+            const catItems = promptItems.filter((i) => (i.category || "Custom") === cat);
             const catAvailable = catItems.filter((i) => !usedItemIds.includes(i.id)).length;
             return (
               <button

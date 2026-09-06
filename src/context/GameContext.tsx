@@ -8,12 +8,20 @@ import {
   type ReactNode,
   type Dispatch,
 } from "react";
-import { GameStatus, type GameSession, type Vote } from "@/lib/types";
+import {
+  GameStatus,
+  type DrawingStroke,
+  type GameMode,
+  type DrawingMedium,
+  type GameSession,
+  type Vote,
+} from "@/lib/types";
 import * as storage from "@/lib/storage";
 
 const initialSession: GameSession = {
   status: GameStatus.IDLE,
   playerIds: [],
+  drawingPlayerIds: [],
   imposterCount: 1,
   imposterIds: [],
   actualItemId: null,
@@ -24,6 +32,10 @@ const initialSession: GameSession = {
   savedRoundId: null,
   imposterWordMode: false,
   decoySameCategory: true,
+  gameMode: "verbal",
+  drawingMedium: "browser",
+  drawingStrokes: [],
+  drawingRound: 1,
 };
 
 type GameAction =
@@ -32,12 +44,15 @@ type GameAction =
   | {
       type: "START_ROUND";
       playerIds: string[];
+      drawingPlayerIds?: string[];
       imposterCount: number;
       imposterIds: string[];
       actualItemId: string;
       decoyItemId: string | null;
       imposterWordMode: boolean;
       decoySameCategory: boolean;
+      gameMode?: GameMode;
+      drawingMedium?: DrawingMedium;
     }
   | { type: "PLAYER_READY" }
   | { type: "PLAYER_DONE" }
@@ -46,6 +61,11 @@ type GameAction =
   | { type: "VOTER_READY" }
   | { type: "CAST_VOTE"; vote: Vote }
   | { type: "CAST_VOTE_FINAL"; votes: Vote[]; roundId: string }
+  | { type: "DRAWING_PLAYER_READY" }
+  | { type: "ADD_DRAWING_STROKE"; stroke: DrawingStroke }
+  | { type: "DRAWING_PLAYER_DONE" }
+  | { type: "START_NEXT_DRAWING_ROUND" }
+  | { type: "FINISH_DRAWING" }
   | { type: "SHOW_RESULTS" }
   | { type: "PLAY_AGAIN" }
   | { type: "GO_HOME" };
@@ -53,7 +73,15 @@ type GameAction =
 function gameReducer(state: GameSession, action: GameAction): GameSession {
   switch (action.type) {
     case "RESTORE_SESSION":
-      return action.session;
+      return {
+        ...initialSession,
+        ...action.session,
+        drawingPlayerIds: action.session.drawingPlayerIds ?? action.session.playerIds,
+        gameMode: action.session.gameMode ?? "verbal",
+        drawingMedium: action.session.drawingMedium ?? "browser",
+        drawingStrokes: action.session.drawingStrokes ?? [],
+        drawingRound: action.session.drawingRound ?? 1,
+      };
 
     case "START_SETUP":
       return { ...initialSession, status: GameStatus.SETUP };
@@ -63,6 +91,7 @@ function gameReducer(state: GameSession, action: GameAction): GameSession {
         ...state,
         status: GameStatus.TURNS_HANDOFF,
         playerIds: action.playerIds,
+        drawingPlayerIds: action.drawingPlayerIds ?? action.playerIds,
         imposterCount: action.imposterCount,
         imposterIds: action.imposterIds,
         actualItemId: action.actualItemId,
@@ -72,6 +101,10 @@ function gameReducer(state: GameSession, action: GameAction): GameSession {
         currentTurnIndex: 0,
         revealedPlayers: [],
         votes: [],
+        gameMode: action.gameMode ?? "verbal",
+        drawingMedium: action.drawingMedium ?? "browser",
+        drawingStrokes: [],
+        drawingRound: 1,
       };
 
     case "PLAYER_READY":
@@ -84,9 +117,12 @@ function gameReducer(state: GameSession, action: GameAction): GameSession {
       if (nextIndex >= state.playerIds.length) {
         return {
           ...state,
-          status: GameStatus.DISCUSSION,
+          status:
+            state.gameMode === "drawing"
+              ? GameStatus.DRAWING_HANDOFF
+              : GameStatus.DISCUSSION,
           revealedPlayers: newRevealed,
-          currentTurnIndex: nextIndex,
+          currentTurnIndex: state.gameMode === "drawing" ? 0 : nextIndex,
         };
       }
       return {
@@ -96,6 +132,54 @@ function gameReducer(state: GameSession, action: GameAction): GameSession {
         revealedPlayers: newRevealed,
       };
     }
+
+    case "DRAWING_PLAYER_READY":
+      return { ...state, status: GameStatus.DRAWING_TURN };
+
+    case "ADD_DRAWING_STROKE": {
+      const alreadyDrew = state.drawingStrokes.some(
+        (stroke) =>
+          stroke.playerId === state.drawingPlayerIds[state.currentTurnIndex] &&
+          stroke.roundNumber === state.drawingRound
+      );
+      if (state.gameMode !== "drawing" || alreadyDrew) return state;
+      return {
+        ...state,
+        drawingStrokes: [...state.drawingStrokes, action.stroke],
+      };
+    }
+
+    case "DRAWING_PLAYER_DONE": {
+      const nextIndex = state.currentTurnIndex + 1;
+      if (nextIndex >= state.drawingPlayerIds.length) {
+        return {
+          ...state,
+          status: GameStatus.DRAWING_ROUND_END,
+          currentTurnIndex: 0,
+        };
+      }
+      return {
+        ...state,
+        status: GameStatus.DRAWING_HANDOFF,
+        currentTurnIndex: nextIndex,
+      };
+    }
+
+    case "START_NEXT_DRAWING_ROUND":
+      return {
+        ...state,
+        status: GameStatus.DRAWING_HANDOFF,
+        currentTurnIndex: 0,
+        drawingRound: state.drawingRound + 1,
+      };
+
+    case "FINISH_DRAWING":
+      return {
+        ...state,
+        status: GameStatus.VOTING_HANDOFF,
+        currentTurnIndex: 0,
+        votes: [],
+      };
 
     case "START_DISCUSSION":
       return { ...state, status: GameStatus.DISCUSSION };
