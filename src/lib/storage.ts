@@ -82,6 +82,14 @@ export function setDisabledCategories(cats: string[]): void {
   set(STORAGE_KEYS.DISABLED_CATEGORIES, cats);
 }
 
+export function getDiscussionStarterCycle(): string[] {
+  return get<string[]>(STORAGE_KEYS.DISCUSSION_STARTER_CYCLE, []);
+}
+
+export function setDiscussionStarterCycle(playerIds: string[]): void {
+  set(STORAGE_KEYS.DISCUSSION_STARTER_CYCLE, playerIds);
+}
+
 export interface LastRoundSettings {
   playerIds: string[];
   imposterCount: number;

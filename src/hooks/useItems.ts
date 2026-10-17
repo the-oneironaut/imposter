@@ -35,6 +35,23 @@ export function useItems() {
       }));
       setItems(stored);
     } else {
+      let needsStorageUpdate = false;
+      const existingTexts = new Set(stored.map((i) => i.text.toLowerCase()));
+      const now = new Date().toISOString();
+      const missingDefaults = DEFAULT_ITEMS.filter(
+        (d) => !existingTexts.has(d.text.toLowerCase())
+      ).map((d) => ({
+        id: nanoid(),
+        text: d.text,
+        category: d.category,
+        createdAt: now,
+      }));
+
+      if (missingDefaults.length > 0) {
+        stored = [...stored, ...missingDefaults];
+        needsStorageUpdate = true;
+      }
+
       // Back-fill category for items created before the category field existed
       const needsUpdate = stored.some((i) => !i.category);
       if (needsUpdate) {
@@ -46,8 +63,10 @@ export function useItems() {
             ? i
             : { ...i, category: textToCategory.get(i.text.toLowerCase()) ?? "Custom" }
         );
-        setItems(stored);
+        needsStorageUpdate = true;
       }
+
+      if (needsStorageUpdate) setItems(stored);
     }
     setItemsState(stored);
   // eslint-disable-next-line react-hooks/exhaustive-deps

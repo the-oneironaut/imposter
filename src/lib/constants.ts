@@ -7,6 +7,7 @@ export const STORAGE_KEYS = {
   GAME_SESSION: "imposter:gameSession",
   DISABLED_CATEGORIES: "imposter:disabledCategories",
   LAST_ROUND_SETTINGS: "imposter:lastRoundSettings",
+  DISCUSSION_STARTER_CYCLE: "imposter:discussionStarterCycle",
 } as const;
 
 export const LIMITS = {

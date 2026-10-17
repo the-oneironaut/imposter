@@ -22,6 +22,7 @@ const initialSession: GameSession = {
   status: GameStatus.IDLE,
   playerIds: [],
   drawingPlayerIds: [],
+  discussionStarterId: null,
   imposterCount: 1,
   imposterIds: [],
   actualItemId: null,
@@ -45,6 +46,7 @@ type GameAction =
       type: "START_ROUND";
       playerIds: string[];
       drawingPlayerIds?: string[];
+      discussionStarterId?: string | null;
       imposterCount: number;
       imposterIds: string[];
       actualItemId: string;
@@ -77,6 +79,7 @@ function gameReducer(state: GameSession, action: GameAction): GameSession {
         ...initialSession,
         ...action.session,
         drawingPlayerIds: action.session.drawingPlayerIds ?? action.session.playerIds,
+        discussionStarterId: action.session.discussionStarterId ?? null,
         gameMode: action.session.gameMode ?? "verbal",
         drawingMedium: action.session.drawingMedium ?? "browser",
         drawingStrokes: action.session.drawingStrokes ?? [],
@@ -92,6 +95,7 @@ function gameReducer(state: GameSession, action: GameAction): GameSession {
         status: GameStatus.TURNS_HANDOFF,
         playerIds: action.playerIds,
         drawingPlayerIds: action.drawingPlayerIds ?? action.playerIds,
+        discussionStarterId: action.discussionStarterId ?? null,
         imposterCount: action.imposterCount,
         imposterIds: action.imposterIds,
         actualItemId: action.actualItemId,

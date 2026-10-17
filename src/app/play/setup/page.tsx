@@ -6,9 +6,25 @@ import { usePlayers } from "@/hooks/usePlayers";
 import { useItems } from "@/hooks/useItems";
 import { useGame } from "@/context/GameContext";
 import { LIMITS } from "@/lib/constants";
-import { assignImposters, selectItem, selectDecoyItem, selectDifferentCategoryItem } from "@/lib/game-logic";
+import {
+  assignImposters,
+  selectDiscussionStarter,
+  selectItem,
+  selectDecoyItem,
+  selectDifferentCategoryItem,
+} from "@/lib/game-logic";
 import { DRAWING_ITEMS } from "@/lib/drawing-items";
-import { getUsedItemIds, setUsedItemIds, getPlayers, getDisabledCategories, setDisabledCategories, getLastRoundSettings, setLastRoundSettings } from "@/lib/storage";
+import {
+  getDiscussionStarterCycle,
+  getUsedItemIds,
+  setDiscussionStarterCycle,
+  setUsedItemIds,
+  getPlayers,
+  getDisabledCategories,
+  setDisabledCategories,
+  getLastRoundSettings,
+  setLastRoundSettings,
+} from "@/lib/storage";
 import { shuffleArray } from "@/lib/random";
 import type { DrawingMedium, GameMode } from "@/lib/types";
 
@@ -115,6 +131,14 @@ export default function SetupPage() {
             ? null
             : selectDecoyItem(items, actualItem.id, decoySameCategory, currentUsedIds).id;
       const imposterIds = assignImposters(playerIds, imposterCount);
+      const discussionStarterSelection =
+        gameMode === "verbal"
+          ? selectDiscussionStarter(playerIds, getDiscussionStarterCycle())
+          : null;
+
+      if (discussionStarterSelection) {
+        setDiscussionStarterCycle(discussionStarterSelection.cyclePlayerIds);
+      }
 
       // Persist settings so "Last Round" can restore them next time
       setLastRoundSettings({
@@ -140,6 +164,7 @@ export default function SetupPage() {
         type: "START_ROUND",
         playerIds,
         drawingPlayerIds,
+        discussionStarterId: discussionStarterSelection?.playerId ?? null,
         imposterCount,
         imposterIds,
         actualItemId: actualItem.id,

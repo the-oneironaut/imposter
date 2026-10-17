@@ -81,6 +81,7 @@ export interface GameSession {
   status: GameStatus;
   playerIds: string[];
   drawingPlayerIds: string[];
+  discussionStarterId: string | null;
   imposterCount: number;
   imposterIds: string[];
   actualItemId: string | null;

@@ -65,6 +65,33 @@ export function assignImposters(
   return shuffled.slice(0, count);
 }
 
+export function selectDiscussionStarter(
+  playerIds: string[],
+  pickedPlayerIds: string[]
+): { playerId: string; cyclePlayerIds: string[] } | null {
+  const activePlayerIds = [...new Set(playerIds)];
+  if (activePlayerIds.length === 0) return null;
+
+  const activeIds = new Set(activePlayerIds);
+  let cyclePlayerIds = [
+    ...new Set(pickedPlayerIds.filter((id) => activeIds.has(id))),
+  ];
+  let eligiblePlayerIds = activePlayerIds.filter(
+    (id) => !cyclePlayerIds.includes(id)
+  );
+
+  if (eligiblePlayerIds.length === 0) {
+    cyclePlayerIds = [];
+    eligiblePlayerIds = activePlayerIds;
+  }
+
+  const playerId = pickRandom(eligiblePlayerIds);
+  return {
+    playerId,
+    cyclePlayerIds: [...cyclePlayerIds, playerId],
+  };
+}
+
 export function tallyVotes(votes: Vote[]): Record<string, number> {
   const tally: Record<string, number> = {};
   for (const vote of votes) {

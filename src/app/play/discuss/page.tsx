@@ -6,7 +6,6 @@ import { useGame } from "@/context/GameContext";
 import { GameStatus } from "@/lib/types";
 import { DEFAULTS } from "@/lib/constants";
 import { getPlayers } from "@/lib/storage";
-import { pickRandom } from "@/lib/random";
 import DrawingCanvas from "@/components/DrawingCanvas";
 
 export default function DiscussPage() {
@@ -15,14 +14,9 @@ export default function DiscussPage() {
   const [seconds, setSeconds] = useState<number>(DEFAULTS.DISCUSSION_TIMER_SECONDS);
   const [timerRunning, setTimerRunning] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // Pick once on mount — computed in a ref so it never re-renders.
-  const starterName = useRef<string | null>(null);
-  if (starterName.current === null && session.playerIds.length > 0) {
-    const allPlayers = getPlayers();
-    const randomId = pickRandom(session.playerIds);
-    starterName.current = allPlayers.find((p) => p.id === randomId)?.name ?? null;
-  }
+  const starterName = getPlayers().find(
+    (player) => player.id === session.discussionStarterId
+  )?.name;
 
   useEffect(() => {
     if (session.status === GameStatus.DISCUSSION && session.gameMode === "drawing") {
@@ -83,10 +77,10 @@ export default function DiscussPage() {
             : "Talk it out — who is the imposter?"
           }
         </p>
-        {starterName.current && (
+        {starterName && (
           <p className="mt-3 text-gray-300">
             Start with{" "}
-            <span className="font-semibold text-indigo-400">{starterName.current}</span>
+            <span className="font-semibold text-indigo-400">{starterName}</span>
           </p>
         )}
       </div>

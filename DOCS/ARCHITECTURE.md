@@ -105,11 +105,11 @@ DrawingStroke {
 ```
 Key: "imposter:usedItemIds"
 
-Schema: string[]    // array of item IDs that have been used as the actual word
+Schema: string[]    // array of prompt IDs already shown as actual or decoy words
 ```
 
-- Only the **actual** word is marked as used, not the decoy.
-- When all items are exhausted, the app warns the user and offers to reset the used list.
+- Both the **actual** and decoy words are marked as used when a decoy exists.
+- When all prompts are exhausted, the app warns the user and offers to reset the used list.
 
 ### 2.5 `scores` — Cumulative Scores
 
@@ -130,7 +130,19 @@ PlayerScore {
 }
 ```
 
-### 2.6 `gameSession` — In-Progress Game State
+### 2.6 `discussionStarterCycle` — Discussion Fairness
+
+```
+Key: "imposter:discussionStarterCycle"
+
+Schema: string[]    // player IDs already selected in the current starter cycle
+```
+
+- The discussion starter is chosen randomly from active players who are not in this cycle.
+- When every active player has started once, the cycle resets for the next discussion.
+- IDs no longer participating are ignored when the next starter is selected.
+
+### 2.7 `gameSession` — In-Progress Game State
 
 ```
 Key: "imposter:gameSession"
@@ -141,11 +153,12 @@ GameSession {
   status: GameStatus           // see state machine §6
   playerIds: string[]          // players in this round
   drawingPlayerIds: string[]   // independent order for drawing turns
+  discussionStarterId: string | null // reserved verbal discussion starter
   imposterCount: number        // configured number of imposters
   imposterIds: string[]        // assigned imposters (set after setup)
   actualItemId: string | null  // the real word
   decoyItemId: string | null   // the decoy word
-  currentTurnIndex: number     // index into playerIds, tracks who is viewing
+  currentTurnIndex: number     // index into the active phase's player order
   revealedPlayers: string[]    // player IDs who have already seen their word
   votes: Vote[]                // accumulated votes
   gameMode: "verbal" | "drawing"
